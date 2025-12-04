@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SECURE TERMINAL // SYLAS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --term-purple: #a855f7; /* Primary Terminal Color */
+            --term-purple-dim: #581c87; /* Dimmed */
+            --term-bg: #050505;
+            --glass-panel: rgba(20, 5, 30, 0.85);
+            --scanline-color: rgba(168, 85, 247, 0.1);
+        }
+
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #000;
+            color: var(--term-purple);
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- BACKGROUND ASSETS --- */
+        #bg-layer {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background-image: url('https://github.com/Bapoooossssaaaa/Kael-Nicholas-Charles-OC/blob/main/Untitled%20design%20(25).png?raw=true');
+            background-size: cover;
+            background-position: center;
+            filter: sepia(1) hue-rotate(250deg) saturate(3) brightness(0.6);
+        }
+
+        #bg-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.9) 100%);
+        }
+
+        .scanline {
+            width: 100%;
+            height: 100px;
+            z-index: 999;
+            background: linear-gradient(0deg, rgba(0,0,0,0) 0%, var(--scanline-color) 50%, rgba(0,0,0,0) 100%);
+            opacity: 0.1;
+            position: absolute;
+            bottom: 100%;
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
+        }
+        @keyframes scanline {
+            0% { bottom: 100%; }
+            100% { bottom: -100px; }
+        }
+
+        .img-recolor-purple {
+            filter: invert(29%) sepia(55%) saturate(3574%) hue-rotate(264deg) brightness(96%) contrast(93%);
+        }
+
+        /* --- COMMON LAYOUT --- */
+        .stage-container {
+            position: fixed; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px);
+            z-index: 50;
+            transition: opacity 0.5s;
+        }
+        .hidden-stage { display: none; opacity: 0; pointer-events: none; }
+
+        /* --- STAGE 1: LOGIN --- */
+        #login-box {
+            border: 2px solid var(--term-purple);
+            padding: 2rem;
+            width: 400px;
+            background: rgba(10, 0, 15, 0.95);
+            box-shadow: 0 0 20px var(--term-purple-dim);
+            text-align: center;
+        }
+
+        .input-sim {
+            background: #050505;
+            border: 1px solid var(--term-purple-dim);
+            color: var(--term-purple);
+            padding: 10px; width: 100%;
+            margin-top: 10px; font-family: monospace;
+            height: 40px; display: flex; align-items: center;
+        }
+
+        .auth-btn {
+            background: var(--term-purple-dim);
+            color: #fff; border: 1px solid var(--term-purple);
+            width: 100%; padding: 10px; margin-top: 20px;
+            font-family: 'Courier New', monospace; font-weight: bold;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 2px;
+            transition: 0.2s;
+        }
+        .auth-btn:hover { background: var(--term-purple); box-shadow: 0 0 10px var(--term-purple); }
+        .auth-btn:disabled { background: #333; border-color: #555; color: #888; cursor: not-allowed; box-shadow: none; }
+
+        /* --- STAGE 2: KEYPAD --- */
+        .keypad-wrapper { display: flex; gap: 10px; margin: 20px 0; }
+        .digit-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        
+        .arrow-btn {
+            background: transparent; border: none; color: var(--term-purple-dim);
+            cursor: pointer; font-size: 1.2rem; transition: 0.2s;
+        }
+        .arrow-btn:hover { color: var(--term-purple); transform: scale(1.2); }
+
+        .digit-display {
+            width: 50px; height: 60px;
+            background: #000; border: 1px solid var(--term-purple-dim);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; color: #555;
+            box-shadow: inset 0 0 10px #000;
+            transition: all 0.3s;
+        }
+        .digit-display.correct {
+            color: #fff;
+            background-color: var(--term-purple-dim);
+            border-color: var(--term-purple);
+        }
+
+        /* --- STAGE 3: DECIPHER --- */
+        #decipher-container {
+            width: 80%; 
+            height: 60%;
+            border: 1px solid var(--term-purple-dim);
+            background: rgba(0,0,0,0.95);
+            padding: 10px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #decipher-grid {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            line-height: 1;
+            color: #8855cc;
+            word-break: break-all;
+            overflow: hidden;
+            white-space: pre-wrap;
+            cursor: default;
+        }
+        
+        .noise-char, .hidden-word-char { 
+            display: inline-block; 
+            width: 1ch; 
+            height: 1em;
+            text-align: center;
+            vertical-align: middle;
+        }
+        
+        .hidden-word-char {
+            color: #8855cc;
+            transition: color 0.1s, text-shadow 0.1s;
+        }
+
+        .hidden-word-char.hovered {
+            color: #fff;
+            text-shadow: 0 0 8px var(--term-purple), 0 0 15px #fff;
+            font-weight: bold;
+            cursor: crosshair;
+        }
+
+        .hidden-word-char.found {
+            color: #d8b4fe;
+            text-shadow: 0 0 10px var(--term-purple), 0 0 20px var(--term-purple-dim);
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        #word-bank {
+            display: flex; gap: 20px; margin-top: 20px;
+        }
+        .word-slot {
+            width: 150px; height: 40px;
+            border: 1px dashed var(--term-purple-dim);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--term-purple); font-weight: bold;
+            background: rgba(0,0,0,0.5);
+        }
+        .word-slot.filled {
+            border-style: solid;
+            background: var(--term-purple-dim);
+            color: white;
+            box-shadow: 0 0 10px var(--term-purple);
+        }
+
+        /* --- STAGE 4: MAIN TERMINAL --- */
+        #terminal-container {
+            display: none; height: 100vh; flex-direction: column;
+        }
+        header {
+            border-bottom: 2px solid var(--term-purple);
+            background: rgba(0,0,0,0.8); padding: 1rem;
+            display: flex; align-items: center; justify-content: space-between;
+            backdrop-filter: blur(5px);
+        }
+        #workspace { flex: 1; display: flex; overflow: hidden; }
+        #sidebar {
+            width: 250px; border-right: 2px solid var(--term-purple-dim);
+            background: rgba(10, 0, 20, 0.7); display: flex; flex-direction: column;
+            padding-top: 2rem; backdrop-filter: blur(5px);
+        }
+        .tab-btn {
+            background: transparent; border: none;
+            border-left: 4px solid transparent; color: var(--term-purple-dim);
+            padding: 1rem; text-align: left; font-family: 'Courier New', monospace;
+            font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.3s;
+            text-transform: uppercase;
+        }
+        .tab-btn:hover { background: rgba(168, 85, 247, 0.1); color: var(--term-purple); padding-left: 1.5rem; }
+        .tab-btn.active {
+            border-left: 4px solid var(--term-purple); color: var(--term-purple);
+            background: rgba(168, 85, 247, 0.15); text-shadow: 0 0 8px var(--term-purple);
+        }
+        #content-viewer { flex: 1; padding: 2rem; overflow-y: auto; background: rgba(0,0,0,0.4); }
+        .content-panel { display: none; animation: fadeIn 0.5s ease; }
+        .content-panel.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .data-block {
+            border: 1px solid var(--term-purple-dim); background: rgba(0,0,0,0.7);
+            padding: 1.5rem; margin-bottom: 1.5rem;
+            box-shadow: 0 0 10px rgba(88, 28, 135, 0.2); backdrop-filter: blur(2px);
+        }
+        .label { color: #d8b4fe; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .value { color: #fff; margin-bottom: 0.5rem; display: block; }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: var(--term-purple-dim); }
+    </style>
+</head>
+<body>
+
+    <!-- Background Layers -->
+    <div id="bg-layer"></div>
+    <div id="bg-overlay"></div>
+    <div class="scanline"></div>
+
+    <!-- === STAGE 1: LOGIN === -->
+    <div id="stage-login" class="stage-container">
+        <div id="login-box">
+            <img src="https://github.com/Bapoooossssaaaa/Kael-Nicholas-Charles-OC/blob/main/Logo_of_the_SCP_Foundation.png?raw=true" 
+                 class="h-24 mx-auto mb-4 img-recolor-purple">
+            <h2 class="text-xl tracking-widest text-purple-400 font-bold mb-1">FOUNDATION TERMINAL</h2>
+            <p class="text-xs text-purple-800 mb-6">SECURE ACCESS GATEWAY</p>
+
+            <div class="text-left text-xs text-purple-500 mb-1">USER ID</div>
+            <div class="input-sim mb-4" id="user-display"></div>
+            
+            <div class="text-left text-xs text-purple-500 mb-1">PASSPHRASE</div>
+            <div class="input-sim" id="pass-display"></div>
+
+            <button id="btn-auth" class="auth-btn opacity-50 pointer-events-none" onclick="attemptAuth()">AUTHORIZE</button>
+            <div id="login-msg" class="h-6 mt-2 text-red-500 font-bold tracking-widest text-sm"></div>
+        </div>
+    </div>
+
+    <!-- === STAGE 2: KEYPAD === -->
+    <div id="stage-keypad" class="stage-container hidden-stage">
+        <div class="bg-black/90 p-8 border-2 border-purple-900 shadow-[0_0_30px_rgba(88,28,135,0.4)] text-center">
+            <h2 class="text-purple-400 text-lg tracking-widest mb-4 border-b border-purple-900 pb-2">MANUAL OVERRIDE REQUIRED</h2>
+            <p class="text-xs text-gray-500 mb-6">ENTER 5-DIGIT SITE IDENTIFIER</p>
+            
+            <div class="keypad-wrapper" id="keypad-container"></div>
+
+            <button id="btn-override" class="auth-btn hidden" onclick="startDecipher()">INITIATE OVERRIDE</button>
+        </div>
+    </div>
+
+    <!-- === STAGE 3: DECIPHER === -->
+    <div id="stage-decipher" class="stage-container hidden-stage">
+        <div class="w-full max-w-4xl flex flex-col items-center h-screen justify-center">
+            <h2 class="text-purple-400 text-lg tracking-widest mb-2">MEMETIC ENCRYPTION DETECTED</h2>
+            <p class="text-xs text-gray-500 mb-4">LOCATE AND INPUT PASS-PHRASES [HOVER TO STABILIZE]</p>
+            
+            <div id="decipher-container">
+                <div id="decipher-grid">
+                    <!-- Content Injected Here -->
+                </div>
+            </div>
+
+            <div id="word-bank">
+                <div class="word-slot" id="slot-0">_ _ _ _ _</div>
+                <div class="word-slot" id="slot-1">_ _ _ _ _ _ _</div>
+                <div class="word-slot" id="slot-2">_ _ _ _ _ _ _ _</div>
+                <div class="word-slot" id="slot-3">_ _ _ _ _ _ _ _ _ _</div>
+            </div>
+
+            <div id="decipher-msg" class="h-6 mt-4 text-green-500 font-bold tracking-widest opacity-0">DECRYPTION COMPLETE</div>
+        </div>
+    </div>
+
+    <!-- === STAGE 4: TERMINAL === -->
+    <div id="terminal-container">
+        <header>
+            <div class="flex items-center gap-4">
+                <img src="https://github.com/Bapoooossssaaaa/Kael-Nicholas-Charles-OC/blob/main/Logo_of_the_SCP_Foundation.png?raw=true" 
+                     class="h-12 img-recolor-purple">
+                <div>
+                    <h1 class="text-xl font-bold tracking-wider">SITE-45 | WHITELIST DEPARTMENT</h1>
+                    <div class="text-xs text-purple-500 font-bold uppercase">LEVEL 5 CLEARANCE // OoTA AUTHORIZED ONLY</div>
+                    <div class="text-[10px] text-purple-900">REDACTED TO ONLY MEMBERS OF THE OFFICE OF THE ADMINISTRATOR</div>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-xs text-purple-500">CONNECTED AS</div>
+                <div class="font-bold">RESH-1 // CONTRACTOR</div>
+            </div>
+        </header>
+
+        <div id="workspace">
+            <nav id="sidebar">
+                <button class="tab-btn active" onclick="switchTab('bio')">01 // PERSONNEL FILE</button>
+                <button class="tab-btn" onclick="switchTab('background')">02 // BACKGROUND</button>
+                <button class="tab-btn" onclick="switchTab('logs')">03 // LOGS</button>
+                <button class="tab-btn" onclick="switchTab('loadout')">04 // ASSIGNMENT</button>
+                <div class="mt-auto p-4 text-xs text-purple-800 opacity-50">TERMINAL ID: T-8842<br>SESSION: SECURE</div>
+            </nav>
+
+            <main id="content-viewer">
+                <!-- BIO TAB -->
+                <div id="bio" class="content-panel active">
+                    <div class="flex items-center gap-4 border-b border-purple-900 pb-4 mb-6">
+                        <img src="https://github.com/Bapoooossssaaaa/OC_KIERAN/blob/main/Untitled%20design%20(26).png?raw=true" class="h-16 opacity-100"> 
+                        <div>
+                            <h2 class="text-2xl font-bold text-white">MALICE CATO</h2>
+                            <p class="text-purple-400">CODENAME: SYLAS</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="data-block">
+                            <h3 class="text-lg border-b border-purple-800 pb-2 mb-4 text-white"><i class="fa-solid fa-id-card mr-2"></i> FOUNDATIONAL RECORDKEEPING</h3>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div><span class="label">Age:</span> <span class="value">20</span></div>
+                                <div><span class="label">Sex:</span> <span class="value">Male</span></div>
+                                <div><span class="label">Height:</span> <span class="value">5'5</span></div>
+                                <div><span class="label">Nationality:</span> <span class="value">Latin/German</span></div>
+                                <div class="col-span-2"><span class="label">Alignment:</span> <span class="value">Foundation "DOTA"</span></div>
+                            </div>
+                        </div>
+                        <div class="data-block">
+                            <h3 class="text-lg border-b border-purple-800 pb-2 mb-4 text-white"><i class="fa-solid fa-dna mr-2"></i> ADDITIONAL INFORMATION</h3>
+                            <p class="text-sm text-gray-300 mb-2"><span class="label">Attributes:</span> Malice is super intelligent and has two different colored eyes, "gray and red." He has Semi short brown hair.</p>
+                            <p class="text-sm text-gray-300 mb-2"><span class="label">Preferences/hobbies:</span> Malice does coding and computer science for fun, along with construction of tech. He prefers baggy clothes.</p>
+                        </div>
+                        <div class="data-block col-span-1 md:col-span-2">
+                            <h3 class="text-lg border-b border-purple-800 pb-2 mb-4 text-white"><i class="fa-solid fa-brain mr-2"></i> EXPERIENCED IN</h3>
+                            <div class="flex flex-wrap gap-2 text-sm text-gray-300">
+                                <span class="bg-purple-900 text-white px-2 py-1 text-xs rounded">Computer Science</span>
+                                <span class="bg-purple-900 text-white px-2 py-1 text-xs rounded">Computer Engineering</span>
+                                <span class="bg-purple-900 text-white px-2 py-1 text-xs rounded">Math</span>
+                                <span class="bg-purple-900 text-white px-2 py-1 text-xs rounded">Coding</span>
+                                <span class="bg-purple-900 text-white px-2 py-1 text-xs rounded">Weapon Engineering</span>
+                                <span class="bg-purple-900 text-white px-2 py-1 text-xs rounded">Weapon modification</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BACKGROUND TAB -->
+                <div id="background" class="content-panel">
+                    <div class="data-block">
+                        <h3 class="text-xl text-white mb-2">IR-4001-A | Incident Report</h3>
+                        <p class="text-sm text-gray-300 leading-relaxed mb-4">
+                            IR-4001-A Hasn't truly affected Malice in any way. As he was far away and inside the facility at the time of the event He's pretty unknown to the topic. All he knows is that's how his mother died. Nothing more, nothing less
+                        </p>
+                    </div>
+
+                    <div class="data-block">
+                        <h3 class="text-xl text-white mb-2">Character Background</h3>
+                        <p class="text-sm text-gray-300 leading-relaxed mb-4">
+                            As a child Malice was mischievous, growing up. Not being able to fit in due to him being ahead of his time in smarts. Thus, overall, making him skip through countless grades, Malice was a 10-year-old in 10th grade. Making his experience in school hell. He has 0 friends due to his smarts; he lacks the ability to make friends with severe social anxiety. After he graduated high school at the age of 13, he proceeded to apply and get into several colleges, where he studied and majored in. Computer engineering, coding.Once Malice finished his studies, at the age of 17, graduating with masters in all of his courses.
+                        </p>
+                        <p class="text-sm text-gray-300 leading-relaxed mb-4">
+                            After graduating, Malice and his dad, Otto, began their ways of working on weaponry, learning the ways to construct weapons and take them apart. Malice, of course, learned it quicker than his father. After which he had to teach his father more in-depth about how to construct and take apart weapons ranging from guns to katanas. If it's a weapon, Malice can take it apart and put it back together with his eyes closed. Along with such, Malice and his father Otto were modifying weapons, ranging from military grade calibers, scopes, mags, grips and triggers. Where they discovered how to modify them to make a gun deadlier then usual.
+                        </p>
+                         <p class="text-sm text-gray-300 leading-relaxed mb-4">
+                            Malice, after all of his intelligence, was searching for a job; he found an Italian computer science and engineering intelligence company that was hiring. He applied and was accepted within hours of submitting his application. He was offered a position as a computer science engineer intelligence officer. That being a very high rank within their company, Malice of course, was very excited to start a new job and get new experiences; once Malice grew to the highest rank within only 4% weeks of being within the intelligence department, being the youngest person in history to reach chief intelligence officer at the age of 18.
+                        </p>
+                         <p class="text-sm text-gray-300 leading-relaxed mb-4">
+                            Where he spent most of his time working in his office working with computers and highly classified documents. In this time he got cut kidnapped and was overall forced to use his hands in all of his fields and expertises. While Malice was succeeding in his job, his father obtained stage 4 Hodgkin's lymphoma. While suffering and not wanting to make his son worry, he pulled the trigger on his double barrel, painting his wall red inside the hospital. Malice got the phone call at his work, and he couldn't hold himself together; he fell into a dark depression with thoughts of suicide. The only thing keeping him up and alive was the fact that he had all that skill and he wanted to prove to his father that he could do it
+                        </p>
+                    </div>
+
+                    <div class="data-block">
+                        <h3 class="text-xl text-white mb-2">Foundational Background</h3>
+                        <p class="text-sm text-gray-300 leading-relaxed">
+                            After the foundation noticed Malice and his expertise along with his recent loss. They were watching him for weeks. Scouting to see if he was the perfect match for what they were looking for. After they finished their reports. It was handed to the higher ups. Where it was taken into review. He was then taken from his home at 18:32, where he was brought to an interrogation room filled with armed operatives with a mysterious figure wearing all black and a mask. Malice was then spoken to.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- LOGS TAB -->
+                <div id="logs" class="content-panel">
+                    <div class="data-block border-l-4 border-purple-600">
+                        <h3 class="text-xl text-white mb-2">RaDiO rEpOrT</h3>
+                        <div class="font-mono text-xs text-purple-300 whitespace-pre-wrap">
+Strange man: State your name..
+Malice: What? What do you want from me..
+Strange Man: I have a job proposal for you. Now answer my questions.
+Malice: Okay, okay. My name is Malice Cato. People call me Sylas though.
+Strange Man: I see. Well, from here I've seen that you have some very good skills, in the fields of Computer Science and engineering, coding, modification of weaponry, blacksmithing.
+Malice: Well, yes. I do suppose I have skills most do not..
+Strange Man: Great, I have a job proposal for you. Would you like to work as a contractor for a task force making their technology and weaponry?
+Malice: What's in it for me?
+Strange Man: A title and a pay that you could never resist.. Power: a place to do your expertise with little to no penalty.
+Malice: I suppose then, if you say so.
+Strange Man: Great! We'll get started right away.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ASSIGNMENT TAB -->
+                <div id="loadout" class="content-panel">
+                    <div class="text-center mb-8">
+                        <img src="https://github.com/Bapoooossssaaaa/OC_KIERAN/blob/main/Untitled%20design%20(26).png?raw=true" class="h-32 mx-auto mb-4 opacity-100">
+                        <h1 class="text-3xl font-bold text-white tracking-widest">MTF RESH-1</h1>
+                        <h2 class="text-xl text-purple-500 uppercase">"Seat of Consciousness"</h2>
+                    </div>
+
+                    <div class="data-block text-justify leading-relaxed text-sm text-gray-300">
+                        <h4 class="text-purple-400 font-bold mb-2">SECURE - CONTAIN - PROTECT | RESEARCH FACILITY - 45</h4>
+                        <p class="mb-4 text-xs italic">"RESEARCH, ATTAINMENT AND SUCCESS"</p>
+                        <p class="mb-4">"Morph Storage", "Sylas Armory"</p>
+                        
+                        <p class="mb-4">
+                            Malice was later placed in a room with Resh-1, "Seat of Consciousness. In that room they went over their regulations regarding how they are not to be mentioned on site; if not followed, there would be punishment. Malice stated. "Okay, okay, okay, no need to be so serious all the time.
+                        </p>
+                        <p class="mb-4">
+                            After which he began his time as a contractor making Resh-l's weaponry and technology.
+                        </p>
+                    </div>
+
+                     <div class="grid grid-cols-1 gap-4">
+                        <h3 class="text-lg text-white border-b border-purple-800 pb-2">Anomalous Ability/Requested Tools</h3>
+                        
+                        <div class="data-block flex justify-between items-center">
+                            <div><span class="text-xl font-bold text-white">L5 keycard</span><div class="text-xs text-purple-400">Reason: Resh-1 Contractor/Intelligence</div></div>
+                            <i class="fa-solid fa-id-badge text-3xl text-purple-600"></i>
+                        </div>
+                        <div class="data-block flex justify-between items-center">
+                            <div><span class="text-xl font-bold text-white">Glock "Pistol"</span><div class="text-xs text-purple-400">Reason: Self-defensel</div></div>
+                            <i class="fa-solid fa-gun text-3xl text-purple-600"></i>
+                        </div>
+                        <div class="data-block flex justify-between items-center">
+                            <div><span class="text-xl font-bold text-white">Medkit charges [black]</span><div class="text-xs text-purple-400">Reason: Larp</div></div>
+                            <i class="fa-solid fa-kit-medical text-3xl text-purple-600"></i>
+                        </div>
+                        <div class="data-block flex justify-between items-center">
+                            <div><span class="text-xl font-bold text-white">Wrench</span><div class="text-xs text-purple-400">Reason: Larp</div></div>
+                            <i class="fa-solid fa-wrench text-3xl text-purple-600"></i>
+                        </div>
+                         <div class="data-block flex justify-between items-center">
+                            <div><span class="text-xl font-bold text-white">Tablet</span><div class="text-xs text-purple-400">Reason: LARPII</div></div>
+                            <i class="fa-solid fa-tablet-screen-button text-3xl text-purple-600"></i>
+                        </div>
+                     </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- === LOGIC === -->
+    <script>
+        // --- STAGE 1 LOGIC ---
+        function typeText(element, text, speed, callback) {
+            let i = 0;
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++; setTimeout(type, speed);
+                } else if (callback) callback();
+            }
+            type();
+        }
+
+        window.onload = () => {
+            setTimeout(() => {
+                typeText(document.getElementById('user-display'), "RESH1_CONTRACTOR_SYLAS", 40, () => {
+                    setTimeout(() => {
+                        typeText(document.getElementById('pass-display'), "**************", 40, () => {
+                            const btn = document.getElementById('btn-auth');
+                            btn.classList.remove('opacity-50', 'pointer-events-none');
+                        });
+                    }, 200);
+                });
+            }, 500);
+        };
+
+        function attemptAuth() {
+            const msg = document.getElementById('login-msg');
+            msg.innerText = "VERIFYING CREDENTIALS...";
+            msg.className = "h-6 mt-2 text-yellow-500 font-bold tracking-widest text-sm animate-pulse";
+            
+            setTimeout(() => {
+                msg.innerText = "ACCESS DENIED - LEVEL 5 REQUIRED";
+                msg.className = "h-6 mt-2 text-red-600 font-bold tracking-widest text-sm";
+                // Transition to Keypad
+                setTimeout(() => {
+                    document.getElementById('stage-login').classList.add('hidden-stage');
+                    const keypad = document.getElementById('stage-keypad');
+                    keypad.classList.remove('hidden-stage');
+                    initKeypad();
+                }, 1500);
+            }, 1000);
+        }
+
+        // --- STAGE 2 LOGIC (KEYPAD) ---
+        const TARGET_CODE = [4, 5, 1, 7, 1]; 
+        const currentCode = [0, 0, 0, 0, 0];
+
+        function initKeypad() {
+            const container = document.getElementById('keypad-container');
+            container.innerHTML = '';
+            
+            TARGET_CODE.forEach((digit, index) => {
+                const col = document.createElement('div');
+                col.className = 'digit-col';
+                
+                const upBtn = document.createElement('button');
+                upBtn.className = 'arrow-btn';
+                upBtn.innerHTML = '<i class="fa-solid fa-caret-up"></i>';
+                upBtn.onclick = () => updateDigit(index, 1);
+                
+                const display = document.createElement('div');
+                display.className = 'digit-display';
+                display.id = `digit-${index}`;
+                display.innerText = '0';
+                
+                const downBtn = document.createElement('button');
+                downBtn.className = 'arrow-btn';
+                downBtn.innerHTML = '<i class="fa-solid fa-caret-down"></i>';
+                downBtn.onclick = () => updateDigit(index, -1);
+                
+                col.appendChild(upBtn);
+                col.appendChild(display);
+                col.appendChild(downBtn);
+                container.appendChild(col);
+            });
+            checkDigits();
+        }
+
+        function updateDigit(index, change) {
+            let val = currentCode[index] + change;
+            if (val > 9) val = 0;
+            if (val < 0) val = 9;
+            currentCode[index] = val;
+            
+            const display = document.getElementById(`digit-${index}`);
+            display.innerText = val;
+            checkDigits();
+        }
+
+        function checkDigits() {
+            let allCorrect = true;
+            currentCode.forEach((val, i) => {
+                const display = document.getElementById(`digit-${i}`);
+                if (val === TARGET_CODE[i]) {
+                    display.classList.add('correct');
+                } else {
+                    display.classList.remove('correct');
+                    allCorrect = false;
+                }
+            });
+
+            const btn = document.getElementById('btn-override');
+            if (allCorrect) btn.classList.remove('hidden');
+            else btn.classList.add('hidden');
+        }
+
+        function startDecipher() {
+            document.getElementById('stage-keypad').classList.add('hidden-stage');
+            const decipher = document.getElementById('stage-decipher');
+            decipher.classList.remove('hidden-stage');
+            initDecipher();
+        }
+
+        // --- STAGE 3 LOGIC (DECIPHER) ---
+        const TARGET_WORDS = ["AXIOM", "EIDOLON", "CENOTAPH", "PANOPTICON"];
+        let foundCount = 0;
+        let noiseInterval;
+        const grid = document.getElementById('decipher-grid');
+        const container = document.getElementById('decipher-container');
+        let resizeTimeout;
+
+        // Measure actual character dimensions to ensure perfect fit
+        function measureChar() {
+            const span = document.createElement('span');
+            span.style.fontFamily = "'Courier New', monospace";
+            span.style.fontSize = "16px";
+            span.style.visibility = "hidden";
+            span.style.position = "absolute";
+            span.innerText = "X";
+            document.body.appendChild(span);
+            const w = span.getBoundingClientRect().width;
+            const h = span.getBoundingClientRect().height;
+            document.body.removeChild(span);
+            return { w, h };
+        }
+
+        function initDecipher() {
+            clearInterval(noiseInterval);
+            
+            const metrics = measureChar();
+            // Subtract padding (20px total)
+            const availableWidth = container.clientWidth - 20;
+            const availableHeight = container.clientHeight - 20;
+
+            const cols = Math.floor(availableWidth / metrics.w);
+            const rows = Math.floor(availableHeight / metrics.h);
+            const GRID_SIZE = cols * rows;
+
+            // Apply calculated width to grid to center it perfectly
+            grid.style.width = `${cols * metrics.w}px`;
+            grid.style.height = `${rows * metrics.h}px`;
+
+            // 1. Initialize data structure
+            let chars = new Array(GRID_SIZE).fill('');
+            const randomChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+            let occupied = new Array(GRID_SIZE).fill(false);
+
+            // 2. Insert target words safely
+            TARGET_WORDS.forEach((word, wordIndex) => {
+                // If word already found, just place it as static
+                const isFound = document.getElementById(`slot-${wordIndex}`)?.classList.contains('filled');
+                
+                let placed = false;
+                let attempts = 0;
+                while (!placed && attempts < 200) {
+                    let pos = Math.floor(Math.random() * (GRID_SIZE - word.length));
+                    
+                    // Safety: Ensure word doesn't wrap lines
+                    const lineStart = Math.floor(pos / cols);
+                    const lineEnd = Math.floor((pos + word.length - 1) / cols);
+                    
+                    if (lineStart !== lineEnd) { attempts++; continue; }
+
+                    // Safety: Check overlap
+                    let fit = true;
+                    for (let i = 0; i < word.length; i++) {
+                        if (occupied[pos + i]) fit = false;
+                    }
+
+                    if (fit) {
+                        for (let i = 0; i < word.length; i++) {
+                            chars[pos + i] = { 
+                                char: word[i], 
+                                type: 'target', 
+                                wordId: wordIndex, 
+                                wordText: word,
+                                alreadyFound: isFound // Persist state across resizes
+                            };
+                            occupied[pos + i] = true;
+                        }
+                        placed = true;
+                    }
+                    attempts++;
+                }
+            });
+
+            // 3. Fill noise
+            for (let i = 0; i < GRID_SIZE; i++) {
+                if (!chars[i]) {
+                    chars[i] = { 
+                        char: randomChars[Math.floor(Math.random() * randomChars.length)], 
+                        type: 'noise' 
+                    };
+                }
+            }
+
+            // 4. Render
+            grid.innerHTML = '';
+            chars.forEach((item) => {
+                const span = document.createElement('span');
+                if (item.type === 'target') {
+                    span.className = 'hidden-word-char';
+                    if(item.alreadyFound) span.classList.add('found'); // Restore found state
+                    span.innerText = item.char;
+                    span.dataset.wordId = item.wordId;
+                    span.dataset.word = item.wordText;
+                    
+                    span.addEventListener('mouseenter', () => highlightWord(item.wordId, true));
+                    span.addEventListener('mouseleave', () => highlightWord(item.wordId, false));
+                    span.addEventListener('click', () => collectWord(item.wordText, item.wordId));
+                } else {
+                    span.className = 'noise-char';
+                    span.innerText = item.char;
+                }
+                grid.appendChild(span);
+            });
+
+            // 5. Scramble Animation
+            noiseInterval = setInterval(() => {
+                const noiseSpans = document.getElementsByClassName('noise-char');
+                if (noiseSpans.length === 0) return;
+                
+                // Animate ~5% of grid per frame
+                const updateCount = Math.floor(noiseSpans.length * 0.05);
+                
+                for(let i=0; i<updateCount; i++) {
+                    const idx = Math.floor(Math.random() * noiseSpans.length);
+                    if(noiseSpans[idx]) {
+                        noiseSpans[idx].innerText = randomChars[Math.floor(Math.random()*randomChars.length)];
+                    }
+                }
+            }, 60);
+        }
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            // Only re-init if the decipher stage is active
+            if(!document.getElementById('stage-decipher').classList.contains('hidden-stage')) {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(initDecipher, 200);
+            }
+        });
+
+        function highlightWord(wordId, active) {
+            const spans = document.querySelectorAll(`.hidden-word-char[data-word-id="${wordId}"]`);
+            spans.forEach(span => {
+                if (!span.classList.contains('found')) {
+                    if (active) span.classList.add('hovered');
+                    else span.classList.remove('hovered');
+                }
+            });
+        }
+
+        function collectWord(word, wordId) {
+            const spans = document.querySelectorAll(`.hidden-word-char[data-word-id="${wordId}"]`);
+            if (spans.length > 0 && spans[0].classList.contains('found')) return;
+
+            spans.forEach(span => {
+                span.classList.remove('hovered');
+                span.classList.add('found');
+            });
+
+            const slot = document.getElementById(`slot-${foundCount}`);
+            if(slot && !slot.classList.contains('filled')) {
+                 slot.innerText = word;
+                 slot.classList.add('filled');
+                 foundCount++;
+            }
+
+            if (foundCount === 4) {
+                clearInterval(noiseInterval);
+                const msg = document.getElementById('decipher-msg');
+                msg.style.opacity = 1;
+                setTimeout(() => {
+                    document.getElementById('stage-decipher').classList.add('hidden-stage');
+                    document.getElementById('terminal-container').style.display = 'flex';
+                }, 1500);
+            }
+        }
+
+        // --- STAGE 4 TAB LOGIC ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.content-panel').forEach(panel => panel.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+    </script>
+</body>
+</html>
